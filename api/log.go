@@ -18,7 +18,7 @@ type slogHandler struct {
 }
 
 func (h slogHandler) Handle(ctx context.Context, record slog.Record) error {
-	if requestID, ok := ctx.Value(contextKeyRequestID).(int); ok { 
+	if requestID, ok := ctx.Value(contextKeyRequestID).(int); ok {
 		record.Add("rid", slog.IntValue(requestID))
 	}
 	if userID, ok := ctx.Value(contextKeyUserID).(int); ok {
@@ -40,13 +40,13 @@ func init() {
 var nextReqId atomic.Uint64
 
 type loggingResponseWriter struct {
-    http.ResponseWriter
-    StatusCode int
+	http.ResponseWriter
+	StatusCode int
 }
 
 func (lrw *loggingResponseWriter) WriteHeader(code int) {
-    lrw.StatusCode = code
-    lrw.ResponseWriter.WriteHeader(code)
+	lrw.StatusCode = code
+	lrw.ResponseWriter.WriteHeader(code)
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
@@ -61,10 +61,10 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		slogger.InfoContext(ctx, "start request", "method", r.Method, "path", r.URL.Path)
 		w.Header().Set("Request-ID", strconv.Itoa(requestID))
 
-        lw := &loggingResponseWriter{w, http.StatusOK}
+		lw := &loggingResponseWriter{w, http.StatusOK}
 
 		t := time.Now()
-        next.ServeHTTP(lw, r)
+		next.ServeHTTP(lw, r)
 		elapsed := time.Since(t)
 
 		slogger.InfoContext(ctx, "done request", "status", lw.StatusCode, "elapsed-ms", elapsed.Milliseconds())

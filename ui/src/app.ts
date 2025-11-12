@@ -592,7 +592,7 @@ const patch = init([classModule, propsModule, attributesModule, styleModule, eve
 let vnode: VNode | null = null;
 
 const redraw = () => {
-    if (env.DEV) { console.count("redraw"); console.log(s); }
+    if (env.DEV) { console.count("redraw"); }
     vnode = patch(vnode || document.getElementById("app")!, render());
 };
 

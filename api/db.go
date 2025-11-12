@@ -10,22 +10,28 @@ import (
 var db *sql.DB
 
 func initDB() {
-    databasePath := os.Getenv("DATABASE_PATH")
-    const devDatabasePath = "./_dev_db"
-    if databasePath == "" {
-        databasePath = devDatabasePath
-        slogger.Warn("no DATABASE_PATH in env, using the default one: "+databasePath)
-    }
+	databasePath := os.Getenv("DATABASE_PATH")
+	const devDatabasePath = "./_dev_db"
+	if databasePath == "" {
+		databasePath = devDatabasePath
+		slogger.Warn("no DATABASE_PATH in env, using the default one: " + databasePath)
+	}
 
-    var err error
+	var err error
 	db, err = sql.Open("sqlite", databasePath)
-    if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 
-    // healthcheck
-    _, errExec := db.Exec(`select 1;`)
-    if errExec != nil { panic(errExec) }
+	// healthcheck
+	_, errExec := db.Exec(`select 1;`)
+	if errExec != nil {
+		panic(errExec)
+	}
 }
 
 func closeDB() {
-    if db != nil { db.Close() }
+	if db != nil {
+		db.Close()
+	}
 }
