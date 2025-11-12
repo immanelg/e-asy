@@ -1,4 +1,3 @@
-- fix parser for `\"\"`
 - use actual grammar in parser, add all keywords and punctuation instead of only some, and refactor some code in it. 
    merge tokens, dont shit objects.
 - parser: floats
