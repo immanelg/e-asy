@@ -8,13 +8,14 @@ export PATH="$ROOT/ui/node_modules/.bin:$PATH"
 
 @ui() {
     cd $ROOT/ui
-    case "$1" in 
-    i*) npm install ;;
-    w*) vite dev ;;
-    b*) tsc && vite build ;;
+    cmd="$1"; shift
+    case "$cmd" in
+    i*) npm install "$@" ;;
+    w*) vite dev "$@" ;;
+    b*) tsc && vite build "$@";;
     npm) npm "$@" ;;
-    run) vite preview ;;
-    check) tsc ;;
+    run) vite preview "$@" ;;
+    check) tsc "$@" ;;
     test) exit 0 ;;
     f*) prettier . --write;;
     *) echo "subcommands: watch run build check test fmt..." ;;
@@ -23,13 +24,14 @@ export PATH="$ROOT/ui/node_modules/.bin:$PATH"
 
 @api() {
     cd $ROOT/api
-    case "$1" in 
-    w*) watchexec -r -e go go run . ;;
-    b*) go build -o api . ;;
-    run) go run . ;;
-    vet) go vet . ;;
+    cmd="$1"; shift
+    case "$cmd" in 
+    w*) watchexec -r -e go go run . "$@" ;;
+    b*) go build -o api "$@" . ;;
+    run) go run "$@" . ;;
+    vet) go vet "$@" . ;;
     test) exit 0 ;;
-    f*) go fmt .;;
+    f*) go fmt "$@" .;;
     *) echo "subcommands: watch run build check test fmt" ;;
     esac
 }
