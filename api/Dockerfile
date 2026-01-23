@@ -10,7 +10,7 @@ RUN CGO_ENABLED=0 go build -ldflags '-s -w -extldflags "-static"' -o /app/api *.
 FROM alpine:3.19
 
 RUN apk update && \
-    apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/testing asymptote pdf2svg && \
+    apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/testing asymptote pdf2svg dvisvgm && \
     apk add pdf2svg ca-certificates
 
 RUN adduser -D appuser
