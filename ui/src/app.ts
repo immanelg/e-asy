@@ -572,7 +572,11 @@ const loadState = () => {
     const codeFromHash = decodeHash();
     const fromUrl = codeFromHash ? { code: codeFromHash } : {};
 
-    const saved = JSON.parse(localStorage.getItem("state") as any) || {};
+    const saved = {};
+    const stored = JSON.parse(localStorage.getItem("state") as any) || {};
+    for (const [k, v] of Object.entries(stored)) 
+        if (["code", "inputType", "outputType"].includes(k)) 
+            saved[k] = v;
     return { ...defaults, ...saved, ...fromUrl };
 }
 
