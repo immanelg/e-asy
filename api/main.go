@@ -183,5 +183,6 @@ func main() {
 						mux)))))
 	if err != nil {
 		slogger.Error("listen", "failed to listen", err)
+        os.Exit(1)
 	}
 }
