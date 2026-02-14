@@ -14,6 +14,9 @@ type EvalStatus = null | "loading" | "ok" | "err" | "network-err";
 type InputType = "asy" | "tex";
 type OutputType = "svg" | "png" | "pdf";
 
+type Config = {
+    scroller: boolean;
+}
 
 type State = {
     code: string;
@@ -115,7 +118,7 @@ draw(a^^b^^c);`,
 }
 
 const startDemo = () => {
-    scroll(".editor");
+    config.scroller && scroll(".editor");
 
     cancelAutoEval();
     demoTimer = setTimeout(() => {
@@ -240,8 +243,8 @@ const sendEval = async () => {
 
     await doEvalRequest();
     redraw();
-    if (s.status === "ok") setTimeout(() => scroll("#output"), 30);
-    else if (s.status === "err") scroll("#compiler-error");
+    if (s.status === "ok") setTimeout(() => config.scroller && scroll("#output"), 30);
+    else if (s.status === "err") config.scroller && scroll("#compiler-error");
 };
 
 const downloadOutput = () => {
@@ -420,7 +423,7 @@ const renderEditor = (): VNode => {
                 on: {
                     input: editorTextareaInput,
                     keydown: onHotkey,
-                    click: e => scroll(e.target),
+                    click: e => config.scroller && scroll(e.target),
                     scroll: e => editorSyncScroll(e.target),
                 },
 
@@ -511,7 +514,7 @@ const render = (): VNode => {
               h("p", "Compiler errors:"),
               h("pre#compiler-error", {
                       on: {
-                          click: e => scroll(e.target),
+                          click: e => config.scroller && scroll(e.target),
                       },
                   }, s.errorMessage),
               h("p", [
@@ -520,7 +523,7 @@ const render = (): VNode => {
             ]),
         ],
 
-        s.status == "ok" && h("div#output", {on: {click: (e: any) => scroll(e.target)}}, [
+        s.status == "ok" && h("div#output", {on: {click: (e: any) => config.scroller && scroll(e.target)}}, [
             renderOutput(),
             h("div#share-panel", [
                 h("button#save.btn", { class: {clicked: s.saveClicked}, on: { click: downloadOutput        } }, 
@@ -533,6 +536,10 @@ const render = (): VNode => {
 };
 
 // initialize ...
+
+const config: Config = {
+    scroller: false,
+};
 
 const saveState = () => {
     localStorage.setItem("state", JSON.stringify(s));
