@@ -1,3 +1,6 @@
 node_modules/
 dist/
 .vite
+api/_dev_db
+api/api
+data/
