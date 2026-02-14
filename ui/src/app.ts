@@ -34,7 +34,7 @@ type State = {
     status: EvalStatus;
     errorMessage: null | string;
 
-    enableAutoEval: boolean;
+    evalDebounce: boolean;
 
     copyUrlClicked: boolean;
 
@@ -69,7 +69,7 @@ const onEditorInput = e => {
     const changed = e.target.textContent || "";
     if (changed === s.code) return;  // input called second time after update() hook
     s.code = changed;
-    if (s.enableAutoEval) startAutoEval();
+    if (s.evalDebounce) startEvalDebouncer();
     redraw();
 };
 const numlines = () => {
@@ -120,7 +120,7 @@ draw(a^^b^^c);`,
 const startDemo = () => {
     config.scroller && scroll(".editor");
 
-    cancelAutoEval();
+    cancelEvalDebouncer();
     demoTimer = setTimeout(() => {
         const demoCode = demos[s.inputType] as string;
         demoCodeIdx = 0;
@@ -162,9 +162,9 @@ const contentType = () => {
 
 
 const toggleAutoEval = e => {
-    if (s.enableAutoEval) cancelAutoEval();
-    else startAutoEval();
-    s.enableAutoEval = !s.enableAutoEval;
+    if (s.evalDebounce) cancelEvalDebouncer();
+    else startEvalDebouncer();
+    s.evalDebounce = !s.evalDebounce;
     redraw();
 };
 const clearBlobUrls = () => {
@@ -233,7 +233,7 @@ const doEvalRequest = async () => {
 const sendEval = async () => {
     if (s.code.trim() === "") return;
 
-    cancelAutoEval();
+    cancelEvalDebouncer();
 
     s.status = "loading" as EvalStatus;
     s.errorMessage = null;
@@ -304,33 +304,33 @@ const copyOutputToClipboard = async () => {
     }
 };
 
-let autosaveInterval: TimerJob | null = null;
-const autosaveMs = 3 * 1000;
-const cancelAutosave = () => {
-    if (autosaveInterval !== null) {
-        clearInterval(autosaveInterval);
-        autosaveInterval = null;
+let saveDebouncerInterval: TimerJob | null = null;
+const saveDebouncerDelay = 3 * 1000;
+const cancerSaveDebouncer = () => {
+    if (saveDebouncerInterval !== null) {
+        clearInterval(saveDebouncerInterval);
+        saveDebouncerInterval = null;
     }
 };
-const startAutosave = () =>
+const startSaveDebouncer = () =>
     setInterval(() => {
         saveState();
-    }, autosaveMs);
+    }, saveDebouncerDelay);
 
-let autoEvalTimer: TimerJob | null;
-const autoEvalDelay = 2 * 1000;
-const cancelAutoEval = () => {
-    if (autoEvalTimer !== null) {
-        clearTimeout(autoEvalTimer);
-        autoEvalTimer = null;
+let evalDebouncerTimer: TimerJob | null;
+const evalDebouncerDelay = 2 * 1000;
+const cancelEvalDebouncer = () => {
+    if (evalDebouncerTimer !== null) {
+        clearTimeout(evalDebouncerTimer);
+        evalDebouncerTimer = null;
     }
 };
-const startAutoEval = () => {
-    cancelAutoEval();
+const startEvalDebouncer = () => {
+    cancelEvalDebouncer();
 
-    autoEvalTimer = setTimeout(() => {
+    evalDebouncerTimer = setTimeout(() => {
         sendEval();
-    }, autoEvalDelay);
+    }, evalDebouncerDelay);
 };
 
 const renderOutput = () => {
@@ -350,7 +350,7 @@ const syHighlight = (code: string) =>
 
 const editorTextareaInput = e => {
     s.code = e.target.value;
-    if (s.enableAutoEval) startAutoEval();
+    if (s.evalDebounce) startEvalDebouncer();
 
     editorSyncScroll(e.target);
     redraw();
@@ -483,10 +483,10 @@ const render = (): VNode => {
             ]),
 
             h("button.btn.autoEval", {
-                class: { active: s.enableAutoEval },
+                class: { active: s.evalDebounce },
                 on: { click: toggleAutoEval },
             }, [
-                icon.render(s.enableAutoEval ? icon.Watch : icon.Unwatch),
+                icon.render(s.evalDebounce ? icon.Watch : icon.Unwatch),
                 "Auto-eval"
             ]),
             h("button#start-demo.btn", { on: { click: startDemo } }, icon.pair(icon.Gift, "Demo!")),
@@ -566,7 +566,7 @@ const loadState = () => {
         status: null,
         errorMessage: null,
 
-        enableAutoEval: true,
+        evalDebounce: true,
 
         copyUrlClicked: false,
         copyClicked: false,
@@ -612,7 +612,7 @@ const redraw = () => {
 
 redraw();
 
-if (s.enableAutoEval) startAutoEval();
-startAutosave();
+if (s.evalDebounce) startEvalDebouncer();
+startSaveDebouncer();
 
 
