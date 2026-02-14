@@ -551,6 +551,11 @@ const decodeHash = (): string | null => {
     return code;
 };
 
+const SAVEABLE_KEYS: Array<keyof State> = [
+    "code", 
+    "inputType", "outputType", 
+    "evalDebounce",
+];
 const loadState = () => {
     let defaults: State = {
         code: "",
@@ -582,9 +587,10 @@ const loadState = () => {
 
     const saved = {};
     const stored = JSON.parse(localStorage.getItem("state") as any) || {};
+    // horrible typescript (i do not care)
     for (const [k, v] of Object.entries(stored)) 
-        if (["code", "inputType", "outputType"].includes(k)) 
-            saved[k] = v;
+        if (SAVEABLE_KEYS.includes(k as keyof State)) 
+            (saved as any)[k] = v;
     return { ...defaults, ...saved, ...fromUrl };
 }
 
