@@ -399,7 +399,7 @@ const editorSyncScroll = (textarea: HTMLTextAreaElement) => {
     editorContentRef!.scrollLeft = textarea.scrollLeft ;
     gutterRef!.scrollTop = textarea.scrollTop;
 }
-const gutter = () => {
+const renderGutter = () => {
     let length = 1/*eob*/ + code().split("\n").length;
     return Array.from({length}, (_, i) => i < length-1 ? 
         h("div.editor-lnr", { key: i }, `${i+1}`)
@@ -419,7 +419,7 @@ const renderEditor = (): VNode => {
                         },
                     }
                 },
-                gutter(),
+                renderGutter(),
             ),
             h("textarea.editor-textarea", {
                 props: {
