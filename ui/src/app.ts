@@ -408,8 +408,9 @@ const gutter = () => {
 }
 
 const renderEditor = (): VNode => {
-    return h("div.editor",
-
+    return h("div.editor", {
+            class: { [cx.status as string]: true },
+        },
         h("div.editor-inner", [
             h("div.editor-gutter", {
                     hook: {
@@ -428,7 +429,6 @@ const renderEditor = (): VNode => {
                     readonly: cx.demoing,
                     spellcheck: "false",
                 },
-                class: { [cx.status as string]: true },
                 on: {
                     input: editorTextareaInput,
                     keydown: onHotkey,
