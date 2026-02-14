@@ -18,8 +18,16 @@ type Config = {
     scroller: boolean;
 }
 
-type State = {
+type File = {
+    name: string;
     code: string;
+}
+
+type Context = {
+    code: string;
+    files: File[];
+    currentFile: number;
+
     cursorPosition: number;
 
     inputType: InputType;
@@ -44,6 +52,8 @@ type State = {
     demoing: boolean;
 };
 
+const code = () => cx.files[cx.currentFile].code || "";
+const writeCode = code => cx.files[cx.currentFile].code = code;
 
 const displayInputType = (name: InputType) => ({
     tex: "LaTeX",
@@ -52,7 +62,7 @@ const displayInputType = (name: InputType) => ({
 
 
 const onEditorKeydown = e => {
-    if (e.ctrlKey && e.key === "Enter" && s.code.trim() !== "") { 
+    if (e.ctrlKey && e.key === "Enter" && code().trim() !== "") { 
         sendEval();
         // event.preventDefault();
     } else if (e.key === 'Tab') {
@@ -67,14 +77,14 @@ const onEditorKeydown = e => {
 };
 const onEditorInput = e => {
     const changed = e.target.textContent || "";
-    if (changed === s.code) return;  // input called second time after update() hook
-    s.code = changed;
-    if (s.evalDebounce) startEvalDebouncer();
+    if (changed === code()) return;  // input called second time after update() hook
+    writeCode(changed);
+    if (cx.evalDebounce) startEvalDebouncer();
     redraw();
 };
 const numlines = () => {
     let n = 1;
-    for (const c of s.code) if (c === "\n") n++;
+    for (const c of code()) if (c === "\n") n++;
     return n;
 }
 
@@ -122,22 +132,22 @@ const startDemo = () => {
 
     cancelEvalDebouncer();
     demoTimer = setTimeout(() => {
-        const demoCode = demos[s.inputType] as string;
+        const demoCode = demos[cx.inputType] as string;
         demoCodeIdx = 0;
-        s.demoing = true;
-        s.code = "";
-        s.outputType = "svg";
+        cx.demoing = true;
+        cx.code = "";
+        cx.outputType = "svg";
         redraw();
         const next = () => {
             if (demoCodeIdx < demoCode.length) {
-                s.code += demoCode[demoCodeIdx];
+                cx.code += demoCode[demoCodeIdx];
                 redraw();
                 demoCodeIdx++;
                 const delay = 20;
                 demoTimer = setTimeout(next, delay);
             } else {
                 demoTimer = null;
-                s.demoing = false;
+                cx.demoing = false;
                 redraw();
                 sendEval();
                 // (document.querySelector("#send-eval") as HTMLButtonElement).click();
@@ -148,7 +158,7 @@ const startDemo = () => {
 };
 
 const contentType = () => {
-    switch (s.outputType) {
+    switch (cx.outputType) {
         case "svg":
             return "image/svg+xml";
         case "png":
@@ -156,30 +166,30 @@ const contentType = () => {
         case "pdf":
             return "application/pdf";
         default:
-            throw new Error("invalid type " + s.outputType);
+            throw new Error("invalid type " + cx.outputType);
     }
 };
 
 
 const toggleAutoEval = e => {
-    if (s.evalDebounce) cancelEvalDebouncer();
+    if (cx.evalDebounce) cancelEvalDebouncer();
     else startEvalDebouncer();
-    s.evalDebounce = !s.evalDebounce;
+    cx.evalDebounce = !cx.evalDebounce;
     redraw();
 };
 const clearBlobUrls = () => {
-    s.pngUrl && URL.revokeObjectURL(s.pngUrl);
-    s.pngUrl = null;
-    s.pdfUrl && URL.revokeObjectURL(s.pdfUrl);
-    s.pdfUrl = null;
+    cx.pngUrl && URL.revokeObjectURL(cx.pngUrl);
+    cx.pngUrl = null;
+    cx.pdfUrl && URL.revokeObjectURL(cx.pdfUrl);
+    cx.pdfUrl = null;
 }
 
 const onOuputTypeChange = (outputType: OutputType) => {
-    s.outputType = outputType;
+    cx.outputType = outputType;
     sendEval();
 };
 const onInputTypeChange = (inputType: InputType) => {
-    s.inputType = inputType;
+    cx.inputType = inputType;
     
     sendEval();
 };
@@ -187,68 +197,68 @@ const onInputTypeChange = (inputType: InputType) => {
 const doEvalRequest = async () => {
     let response;
     try {
-        response = await fetch(`${API_URL}/eval?i=${s.inputType}&o=${s.outputType}`, {
+        response = await fetch(`${API_URL}/eval?i=${cx.inputType}&o=${cx.outputType}`, {
             method: "POST",
             headers: {
                 // Accept: contentType(),
             },
-            body: s.code,
+            body: code(),
         });
     } catch (exc) {
-        s.status = "network-err";
-        s.errorMessage = `I caught an exception while performing an HTTP request:\n${exc}`;
+        cx.status = "network-err";
+        cx.errorMessage = `I caught an exception while performing an HTTP request:\n${exc}`;
         return;
     }
     if (!response.ok) {
-        s.status = "network-err";
-        s.errorMessage = `HTTP request returned an error response. Status: ${response.status}, Response: ${await response.text() ?? ""}`;
+        cx.status = "network-err";
+        cx.errorMessage = `HTTP request returned an error response. Status: ${response.status}, Response: ${await response.text() ?? ""}`;
         return;
     }
 
     const blob = await response.blob();
     if (response.headers.get("Content-Type") === "application/vnd.asy-compiler-error") {
-        s.status = "err";
-        s.errorMessage = await blob.text();
+        cx.status = "err";
+        cx.errorMessage = await blob.text();
         return;
     }
 
-    s.status = "ok";
-    switch (s.outputType) {
+    cx.status = "ok";
+    switch (cx.outputType) {
         case "svg":
             const svgText = await blob.text();
-            s.svgText = svgText;
+            cx.svgText = svgText;
             break;
         case "png":
             const pngUrl = URL.createObjectURL(blob);
-            s.pngUrl = pngUrl;
-            s.pngBlob = blob;
+            cx.pngUrl = pngUrl;
+            cx.pngBlob = blob;
             break;
         case "pdf":
             const pdfUrl = URL.createObjectURL(blob);
-            s.pdfUrl = pdfUrl;
-            s.pdfBlob = blob;
+            cx.pdfUrl = pdfUrl;
+            cx.pdfBlob = blob;
             break;
     }
 };
 const sendEval = async () => {
-    if (s.code.trim() === "") return;
+    if (code().trim() === "") return;
 
     cancelEvalDebouncer();
 
-    s.status = "loading" as EvalStatus;
-    s.errorMessage = null;
+    cx.status = "loading" as EvalStatus;
+    cx.errorMessage = null;
     redraw();
 
     clearBlobUrls();
 
     await doEvalRequest();
     redraw();
-    if (s.status === "ok") setTimeout(() => config.scroller && scroll("#output"), 30);
-    else if (s.status === "err") config.scroller && scroll("#compiler-error");
+    if (cx.status === "ok") setTimeout(() => config.scroller && scroll("#output"), 30);
+    else if (cx.status === "err") config.scroller && scroll(".compiler-error");
 };
 
 const downloadOutput = () => {
-    s.saveClicked = true;
+    cx.saveClicked = true;
     redraw();
 
     const downloadFromBlob = (blob: Blob, name: string): void => {
@@ -261,39 +271,39 @@ const downloadOutput = () => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     };
-    switch (s.outputType) {
+    switch (cx.outputType) {
         case "svg":
-            downloadFromBlob(new Blob([s.svgText!], { type: contentType() }), "asy.svg");
+            downloadFromBlob(new Blob([cx.svgText!], { type: contentType() }), "asy.svg");
             break;
         case "png":
-            downloadFromBlob(s.pngBlob!, "asy.png");
+            downloadFromBlob(cx.pngBlob!, "asy.png");
             break;
         case "pdf":
-            downloadFromBlob(s.pdfBlob!, "asy.pdf"); 
+            downloadFromBlob(cx.pdfBlob!, "asy.pdf"); 
             break;
     }
 };
 
 const copyOutputToClipboard = async () => {
-    s.copyClicked = true;
+    cx.copyClicked = true;
     redraw();
 
     try {
-        switch (s.outputType) {
+        switch (cx.outputType) {
             case "svg":
-                await navigator.clipboard.writeText(s.svgText!);
+                await navigator.clipboard.writeText(cx.svgText!);
                 break;
             case "png":
                 await navigator.clipboard.write([
                     new ClipboardItem(
-                        { [contentType()]: s.pngBlob! 
+                        { [contentType()]: cx.pngBlob! 
                     })
                 ]);
                 break;
             case "pdf":
                 await navigator.clipboard.write([
                     new ClipboardItem(
-                        { [contentType()]: s.pdfBlob! 
+                        { [contentType()]: cx.pdfBlob! 
                     })
                 ]);
                 break;
@@ -314,7 +324,7 @@ const cancerSaveDebouncer = () => {
 };
 const startSaveDebouncer = () =>
     setInterval(() => {
-        saveState();
+        saveContext();
     }, saveDebouncerDelay);
 
 let evalDebouncerTimer: TimerJob | null;
@@ -334,23 +344,23 @@ const startEvalDebouncer = () => {
 };
 
 const renderOutput = () => {
-    s.copyClicked = s.saveClicked = false;
-    switch (s.outputType) {
-    case "svg": return h("div#output-impl", { props: { innerHTML: s.svgText } });
-    case "png": return h("img#output-impl", { props: { src: s.pngUrl } });
-    case "pdf": return h("embed#output-impl", { style: {"min-height": "1150px"}, props: { src: s.pdfUrl, type: "application/pdf" } });
+    cx.copyClicked = cx.saveClicked = false;
+    switch (cx.outputType) {
+    case "svg": return h("div#output-impl", { props: { innerHTML: cx.svgText } });
+    case "png": return h("img#output-impl", { props: { src: cx.pngUrl } });
+    case "pdf": return h("embed#output-impl", { style: {"min-height": "1150px"}, props: { src: cx.pdfUrl, type: "application/pdf" } });
     }
 };
 
 const syHighlight = (code: string) => 
-    tokenize(code, s.inputType)
+    tokenize(code, cx.inputType)
         .map(token => 
             h("span",  {attrs: {class: [`sy-${token.type}`] } }, token.value))
     ;
 
 const editorTextareaInput = e => {
-    s.code = e.target.value;
-    if (s.evalDebounce) startEvalDebouncer();
+    writeCode(e.target.value);
+    if (cx.evalDebounce) startEvalDebouncer();
 
     editorSyncScroll(e.target);
     redraw();
@@ -358,7 +368,7 @@ const editorTextareaInput = e => {
 
 const onHotkey = (e: KeyboardEvent) => {
     const el = e.target as HTMLTextAreaElement;
-    if (e.ctrlKey && e.key === "Enter" && s.code.trim() !== "") sendEval();
+    if (e.ctrlKey && e.key === "Enter" && code().trim() !== "") sendEval();
     else if (e.key == 'Enter') {
         //TODO: add indent
     }
@@ -390,7 +400,7 @@ const editorSyncScroll = (textarea: HTMLTextAreaElement) => {
     gutterRef!.scrollTop = textarea.scrollTop;
 }
 const gutter = () => {
-    let length = 1/*eob*/ + s.code.split("\n").length;
+    let length = 1/*eob*/ + code().split("\n").length;
     return Array.from({length}, (_, i) => i < length-1 ? 
         h("div.editor-lnr", { key: i }, `${i+1}`)
         : h("div.editor-lnr.eob", { key: i }, `~`)
@@ -412,13 +422,13 @@ const renderEditor = (): VNode => {
             ),
             h("textarea.editor-textarea", {
                 props: {
-                    value: s.code,
+                    value: code(),
                 },
                 attrs: {
-                    readonly: s.demoing,
+                    readonly: cx.demoing,
                     spellcheck: "false",
                 },
-                class: { [s.status as string]: true },
+                class: { [cx.status as string]: true },
                 on: {
                     input: editorTextareaInput,
                     keydown: onHotkey,
@@ -433,7 +443,7 @@ const renderEditor = (): VNode => {
                         editorContentRef = vnode.elm as Element; 
                     },
                 },
-            }, syHighlight(s.code)),
+            }, syHighlight(code())),
         ])
     )
 }
@@ -445,19 +455,22 @@ const render = (): VNode => {
         h("h1", {}, "Asymptote Evaluator"),
 
         h("a", { attrs: { href: "https://github.com/immanelg/asy-eval-server" } }, "View the source on GitHub ⭐"),
+        h("ul", [
+            cx.files.map(file => h("li", file.name)),
+        ]),
 
         renderEditor(),
 
-        !s.demoing && h("div#eval-panel", [
+        !cx.demoing && h("div#eval-panel", [
             h("button#send-eval.btn", {
-                attrs: { disabled: s.code.trim() === "" || s.status === "loading" },
+                attrs: { disabled: code().trim() === "" || cx.status === "loading" },
                 on: { click: sendEval },
-            }, s.status === "loading" && "Evaluating..." || icon.pair(icon.Run, "Evaluate")),
+            }, cx.status === "loading" && "Evaluating..." || icon.pair(icon.Run, "Evaluate")),
 
             h("div.btn.typeswitch", [
                 icon.render(icon.Read),
                 [
-                    h("div.menu-selected", h("span", s.outputType.toUpperCase())),
+                    h("div.menu-selected", h("span", cx.outputType.toUpperCase())),
                     h("div.menu-options", 
                         ["svg", "png", "pdf"].map(name => 
                             h("div.menu-option", {
@@ -471,7 +484,7 @@ const render = (): VNode => {
             h("div.btn.typeswitch", [
                 icon.render(icon.Write),
                 [
-                    h("div.menu-selected", displayInputType(s.inputType)),
+                    h("div.menu-selected", displayInputType(cx.inputType)),
                     h("div.menu-options", 
                         ["asy", "tex"].map(name => 
                             h("div.menu-option", {
@@ -483,10 +496,10 @@ const render = (): VNode => {
             ]),
 
             h("button.btn.autoEval", {
-                class: { active: s.evalDebounce },
+                class: { active: cx.evalDebounce },
                 on: { click: toggleAutoEval },
             }, [
-                icon.render(s.evalDebounce ? icon.Watch : icon.Unwatch),
+                icon.render(cx.evalDebounce ? icon.Watch : icon.Unwatch),
                 "Auto-eval"
             ]),
             h("button#start-demo.btn", { on: { click: startDemo } }, icon.pair(icon.Gift, "Demo!")),
@@ -494,41 +507,41 @@ const render = (): VNode => {
                 on: { 
                     click: async () => {
                         const url = new URL(window.location.href);
-                        url.hash = encodeURIComponent(s.code);
+                        url.hash = encodeURIComponent(code());
                         await navigator.clipboard.writeText(url.toString());
-                        s.copyUrlClicked = true;
+                        cx.copyUrlClicked = true;
                         redraw();
                         setTimeout(() => {
-                            s.copyUrlClicked = false;
+                            cx.copyUrlClicked = false;
                             redraw();
                         }, 2000); 
                     },
                 } 
-            }, s.copyUrlClicked ? icon.pair(icon.Copied, "Copied!") : icon.pair(icon.Copy, "Share URL")),
+            }, cx.copyUrlClicked ? icon.pair(icon.Copied, "Copied!") : icon.pair(icon.Copy, "Share URL")),
 
         ]),
 
-        s.status === "network-err" && h("pre#network-err", s.errorMessage),
-        s.status === "err" && [
+        cx.status === "network-err" && h("pre#network-err", cx.errorMessage),
+        cx.status === "err" && [
               h("p", "Compiler errors:"),
-              h("pre#compiler-error", {
+              h("pre.compiler-error", {
                       on: {
                           click: e => config.scroller && scroll(e.target),
                       },
-                  }, s.errorMessage),
+                  }, cx.errorMessage),
               h("p", [
                 "You are really bad at this, aren't you? Can you even draw a square? Here's some random tutorial: ",
                 h("a", { attrs: { href: "https://asymptote.sourceforge.io/asymptote_tutorial.pdf" } }, "Tutorial."),
             ]),
         ],
 
-        s.status == "ok" && h("div#output", {on: {click: (e: any) => config.scroller && scroll(e.target)}}, [
+        cx.status == "ok" && h("div#output", {on: {click: (e: any) => config.scroller && scroll(e.target)}}, [
             renderOutput(),
             h("div#share-panel", [
-                h("button#save.btn", { class: {clicked: s.saveClicked}, on: { click: downloadOutput        } }, 
-                    s.saveClicked ? icon.pair(icon.Save, "Downloaded") : icon.pair(icon.Save, "Download")),
-                h("button#copy.btn", { class: {clicked: s.copyClicked}, on: { click: copyOutputToClipboard } }, 
-                    s.copyClicked ? icon.pair(icon.Copied, "Copied")   : icon.pair(icon.Copy, "Copy")),
+                h("button#save.btn", { class: {clicked: cx.saveClicked}, on: { click: downloadOutput        } }, 
+                    cx.saveClicked ? icon.pair(icon.Save, "Downloaded") : icon.pair(icon.Save, "Download")),
+                h("button#copy.btn", { class: {clicked: cx.copyClicked}, on: { click: copyOutputToClipboard } }, 
+                    cx.copyClicked ? icon.pair(icon.Copied, "Copied")   : icon.pair(icon.Copy, "Copy")),
             ])
         ])
     ]);
@@ -540,8 +553,9 @@ const config: Config = {
     scroller: false,
 };
 
-const saveState = () => {
-    localStorage.setItem("state", JSON.stringify(s));
+const saveContext = () => {
+    // TODO: saveable keys
+    localStorage.setItem("state", JSON.stringify(cx));
 };
 
 const decodeHash = (): string | null => {
@@ -551,14 +565,18 @@ const decodeHash = (): string | null => {
     return code;
 };
 
-const SAVEABLE_KEYS: Array<keyof State> = [
+const SAVEABLE_KEYS: Array<keyof Context> = [
     "code", 
+    "files",
+    "currentFile",
     "inputType", "outputType", 
     "evalDebounce",
 ];
-const loadState = () => {
-    let defaults: State = {
+const restoreContext = () => {
+    let defaults: Context = {
         code: "",
+        files: null,
+        currentFile: 0,
         inputType: "asy",
         outputType: "svg",
 
@@ -589,12 +607,18 @@ const loadState = () => {
     const stored = JSON.parse(localStorage.getItem("state") as any) || {};
     // horrible typescript (i do not care)
     for (const [k, v] of Object.entries(stored)) 
-        if (SAVEABLE_KEYS.includes(k as keyof State)) 
+        if (SAVEABLE_KEYS.includes(k as keyof Context)) 
             (saved as any)[k] = v;
     return { ...defaults, ...saved, ...fromUrl };
 }
 
-const s = loadState();
+const cx = restoreContext();
+(window as any).cx = cx;
+
+if (cx.files === null) {
+    cx.files = [{ name: "main.asy", code: "" }];
+    cx.currentFile = 0;
+}
 
 // window.addEventListener("hashchange", () => {
 //     const code = decodeHash();
@@ -616,9 +640,13 @@ const redraw = () => {
 
 // window.addEventListener('resize', () => redraw());
 
+window.onunload = e => {
+    saveContext();
+};
+
 redraw();
 
-if (s.evalDebounce) startEvalDebouncer();
+if (cx.evalDebounce) startEvalDebouncer();
 startSaveDebouncer();
 
 
