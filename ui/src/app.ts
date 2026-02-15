@@ -72,7 +72,7 @@ const onEditorKeydown = e => {
         // event.preventDefault();
     } else if (e.key == "Enter") {
         e.preventDefault()
-          document.execCommand('insertLineBreak')
+        document.execCommand('insertLineBreak')
     }
 };
 const onEditorInput = e => {
@@ -450,14 +450,44 @@ const renderEditor = (): VNode => {
 
 
 
+const switchFile = name => {
+    cx.currentFile = cx.files.findIndex(file => file.name === name);
+};
+const createFile = name => {
+    cx.files.push({name, code: ""});
+}
+const deleteFile = name => {
+    cx.files.splice(cx.files.findIndex(file => file.name === name), 1);
+};
 const render = (): VNode => {
     return h("div", [
         h("h1", {}, "Asymptote Evaluator"),
 
         h("a", { attrs: { href: "https://github.com/immanelg/asy-eval-server" } }, "View the source on GitHub ⭐"),
-        h("ul", [
-            cx.files.map(file => h("li", file.name)),
-        ]),
+
+        false && [
+            h("ul", cx.files.map((file, i) => 
+                h("li", {
+                    key: file.name,
+                    on: {
+                        click: e => {
+                            switchFile(file.name);
+                            redraw();
+                        },
+                    },
+                }, file.name+(i===cx.currentFile ? "*" : "")))
+            ),
+            h("button", {
+                on: {
+                    click: e => {
+                        const n = Date.now()+"new.asy"
+                        createFile(n);
+                        switchFile(n);
+                        redraw();
+                    },
+                },
+            }, "new file"),
+        ],
 
         renderEditor(),
 

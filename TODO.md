@@ -1,11 +1,13 @@
 - use actual grammar in parser, add all keywords and punctuation instead of only some, and refactor some code in it. 
    merge tokens, dont shit objects.
 - parser: floats
+- latexmk gives error exit code 12 if file not changed
 ---
 - unify blobs into one
 - qr code sharing
 - touch friendly
 - aria labels
+- window notification when compilation finished
 - indent on enter
 - clear output button
 - dark/light mode switch
