@@ -54,12 +54,12 @@ type Context = {
 
 const code = () => cx.files[cx.currentFile].code || "";
 const writeCode = code => cx.files[cx.currentFile].code = code;
+const pushCode = c => cx.files[cx.currentFile].code += c;
 
 const displayInputType = (name: InputType) => ({
     tex: "LaTeX",
     asy: "Asymptote",
 }[name]);
-
 
 const onEditorKeydown = e => {
     if (e.ctrlKey && e.key === "Enter" && code().trim() !== "") { 
@@ -140,7 +140,8 @@ const startDemo = () => {
         redraw();
         const next = () => {
             if (demoCodeIdx < demoCode.length) {
-                cx.code += demoCode[demoCodeIdx];
+                // cx.code += demoCode[demoCodeIdx];
+                pushCode(demoCode[demoCodeIdx]);
                 redraw();
                 demoCodeIdx++;
                 const delay = 20;
@@ -259,6 +260,10 @@ const sendEval = async () => {
 
 const downloadOutput = () => {
     cx.saveClicked = true;
+    setTimeout(() => {
+        cx.saveClicked = false;
+        redraw();
+    }, 5000)
     redraw();
 
     const downloadFromBlob = (blob: Blob, name: string): void => {
@@ -286,6 +291,10 @@ const downloadOutput = () => {
 
 const copyOutputToClipboard = async () => {
     cx.copyClicked = true;
+    setTimeout(() => {
+        cx.copyClicked = false;
+        redraw();
+    }, 5000)
     redraw();
 
     try {
@@ -344,7 +353,6 @@ const startEvalDebouncer = () => {
 };
 
 const renderOutput = () => {
-    cx.copyClicked = cx.saveClicked = false;
     switch (cx.outputType) {
     case "svg": return h("div#output-impl", { props: { innerHTML: cx.svgText } });
     case "png": return h("img#output-impl", { props: { src: cx.pngUrl } });
@@ -459,38 +467,38 @@ const createFile = name => {
 const deleteFile = name => {
     cx.files.splice(cx.files.findIndex(file => file.name === name), 1);
 };
-const render = (): VNode => {
-    return h("div", [
-        h("h1", {}, "Asymptote Evaluator"),
 
-        h("a", { attrs: { href: "https://github.com/immanelg/asy-eval-server" } }, "View the source on GitHub ⭐"),
-
-        false && [
-            h("ul", cx.files.map((file, i) => 
-                h("li", {
-                    key: file.name,
-                    on: {
-                        click: e => {
-                            switchFile(file.name);
-                            redraw();
-                        },
-                    },
-                }, file.name+(i===cx.currentFile ? "*" : "")))
-            ),
-            h("button", {
-                on: {
-                    click: e => {
-                        const n = Date.now()+"new.asy"
-                        createFile(n);
-                        switchFile(n);
-                        redraw();
-                    },
-                },
-            }, "new file"),
-        ],
-
+const renderLeftPane = () => [
         renderEditor(),
 
+];
+const renderRightPane = () => [
+    cx.status === "network-err" && h("pre#network-err", cx.errorMessage),
+    cx.status === "err" && [
+          h("p", "Compiler errors:"),
+          h("pre.compiler-error", {
+                  on: {
+                      click: e => config.scroller && scroll(e.target),
+                  },
+              }, cx.errorMessage),
+          h("p", [
+            "You are really bad at this, aren't you? Can you even draw a square? Here's some random tutorial: ",
+            h("a", { attrs: { href: "https://asymptote.sourceforge.io/asymptote_tutorial.pdf" } }, "Tutorial."),
+        ]),
+    ],
+    cx.status === "ok" && h("div#output", {on: {click: (e: any) => config.scroller && scroll(e.target)}}, [
+        renderOutput(),
+        h("div#share-panel", [
+            h("button#save.btn", { class: {clicked: cx.saveClicked}, on: { click: downloadOutput        } }, 
+                cx.saveClicked ? icon.pair(icon.Save, "Downloaded") : icon.pair(icon.Save, "Download")),
+            h("button#copy.btn", { class: {clicked: cx.copyClicked}, on: { click: copyOutputToClipboard } }, 
+                cx.copyClicked ? icon.pair(icon.Copied, "Copied")   : icon.pair(icon.Copy, "Copy")),
+        ])
+    ]),
+]
+
+const render = (): VNode => {
+    return h("div", [
         !cx.demoing && h("div#eval-panel", [
             h("button#send-eval.btn", {
                 attrs: { disabled: code().trim() === "" || cx.status === "loading" },
@@ -549,31 +557,37 @@ const render = (): VNode => {
                 } 
             }, cx.copyUrlClicked ? icon.pair(icon.Copied, "Copied!") : icon.pair(icon.Copy, "Share URL")),
 
-        ]),
+    ]),
 
-        cx.status === "network-err" && h("pre#network-err", cx.errorMessage),
-        cx.status === "err" && [
-              h("p", "Compiler errors:"),
-              h("pre.compiler-error", {
-                      on: {
-                          click: e => config.scroller && scroll(e.target),
-                      },
-                  }, cx.errorMessage),
-              h("p", [
-                "You are really bad at this, aren't you? Can you even draw a square? Here's some random tutorial: ",
-                h("a", { attrs: { href: "https://asymptote.sourceforge.io/asymptote_tutorial.pdf" } }, "Tutorial."),
-            ]),
+        false && [
+            h("ul", cx.files.map((file, i) => 
+                h("li", {
+                    key: file.name,
+                    on: {
+                        click: e => {
+                            switchFile(file.name);
+                            redraw();
+                        },
+                    },
+                }, file.name+(i===cx.currentFile ? "*" : "")))
+            ),
+            h("button", {
+                on: {
+                    click: e => {
+                        const n = Date.now()+"new.asy"
+                        createFile(n);
+                        switchFile(n);
+                        redraw();
+                    },
+                },
+            }, "new file"),
         ],
 
-        cx.status == "ok" && h("div#output", {on: {click: (e: any) => config.scroller && scroll(e.target)}}, [
-            renderOutput(),
-            h("div#share-panel", [
-                h("button#save.btn", { class: {clicked: cx.saveClicked}, on: { click: downloadOutput        } }, 
-                    cx.saveClicked ? icon.pair(icon.Save, "Downloaded") : icon.pair(icon.Save, "Download")),
-                h("button#copy.btn", { class: {clicked: cx.copyClicked}, on: { click: copyOutputToClipboard } }, 
-                    cx.copyClicked ? icon.pair(icon.Copied, "Copied")   : icon.pair(icon.Copy, "Copy")),
-            ])
-        ])
+        h("div.pane-container", [
+                h("div.left-pane", renderLeftPane()),
+                h("div.right-pane", renderRightPane()),
+        ]),
+        h("a", { attrs: { href: "https://github.com/immanelg/asy-eval-server" } }, "Star me on GitHub ⭐"),
     ]);
 };
 

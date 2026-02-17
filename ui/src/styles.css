@@ -9,8 +9,8 @@ body {
     font-size: 12pt;
     color: #cccccc;
 
-    margin: 40px auto;
-    max-width: 800px;
+    margin: 0;
+    max-width: 1200px;
     padding: 10px;
 
     background-color: rgb(30 30 30);
@@ -30,6 +30,16 @@ body {
 a:visited {
     color: hsl(230.85, 44.36%, 73.92%);
     text-decoration: none;
+}
+
+.pane-container {
+    display: flex;
+}
+.left-pane {
+    width: 100%;
+}
+.right-pane {
+    width: 100%;
 }
 
 .compiler-error {
@@ -177,6 +187,10 @@ span.sy-Number {
     & .btn {
         margin: 5px 7px;
     }
+
+    position: sticky;
+    top: 5px;
+    z-index: 696969;
 }
 
 #share-panel {
@@ -287,7 +301,7 @@ button#send-eval {
     .menu-options {
         display: none;
         position: absolute;
-        bottom: 0;
+        top: 0;
         left: 0;
         background-color: hsl(201 50% 32%);
         min-width: 100%;
